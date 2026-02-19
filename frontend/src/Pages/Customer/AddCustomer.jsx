@@ -1,16 +1,32 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Typography, Button, Stack, useMediaQuery, useTheme } from "@mui/material";
 import { Person, Phone, Save, RotateLeft, CheckCircle } from "@mui/icons-material";
+import Swal from "sweetalert2";
+import { addCustomer, updateCustomer } from "../../api/customerAPI";
 
-const AddCustomer = ({ onClose }) => {
+const AddCustomer = ({ onClose, editData }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  const [customerName, setCustomerName] = useState("");
-  const [mobileNumber, setMobileNumber] = useState("");
+  const [formData, setFormData] = useState({ customerName: "", mobileNumber: "" });
   const [errors, setErrors] = useState({ customerName: "", mobileNumber: "" });
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  // ⭐ LOAD DATA FOR EDIT
+  useEffect(() => {
+    if (editData) {
+      console.log("Loading edit data:", editData);
+      setFormData({ customerName: editData.name, mobileNumber: editData.contact });
+    } else {
+      setFormData({ customerName: "", mobileNumber: "" });
+    }
+  }, [editData]);
+
+  const { customerName, mobileNumber } = formData;
+  const setCustomerName = (value) => setFormData(prev => ({ ...prev, customerName: value }));
+  const setMobileNumber = (value) => setFormData(prev => ({ ...prev, mobileNumber: value }));
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     let newErrors = { customerName: "", mobileNumber: "" };
     let isValid = true;
@@ -27,14 +43,48 @@ const AddCustomer = ({ onClose }) => {
     setErrors(newErrors);
     if (!isValid) return;
 
-    // Success Action
-    console.log("Customer Added:", { customerName, mobileNumber });
-    if (onClose) onClose();
+    // API Call
+    setIsLoading(true);
+    try {
+      if (editData) {
+        await updateCustomer(editData._id, { name: customerName, contact: mobileNumber });
+        Swal.fire({
+          icon: "success",
+          title: "Updated!",
+          text: "Customer updated successfully",
+          confirmButtonColor: "#1f3a8a",
+          timer: 2000,
+          timerProgressBar: true
+        });
+      } else {
+        await addCustomer({ name: customerName, contact: mobileNumber });
+        Swal.fire({
+          icon: "success",
+          title: "Success!",
+          text: "Customer added successfully",
+          confirmButtonColor: "#1f3a8a",
+          timer: 2000,
+          timerProgressBar: true
+        });
+      }
+      handleReset();
+      if (onClose) onClose();
+    } catch (error) {
+      console.error("Error:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Failed to save customer";
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: errorMessage,
+        confirmButtonColor: "#1f3a8a"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleReset = () => {
-    setCustomerName("");
-    setMobileNumber("");
+    setFormData({ customerName: "", mobileNumber: "" });
     setErrors({ customerName: "", mobileNumber: "" });
   };
 
@@ -148,6 +198,7 @@ const AddCustomer = ({ onClose }) => {
           type="submit" 
           variant="contained" 
           startIcon={<Save />}
+          disabled={isLoading}
           sx={{ 
             bgcolor: "#1f3a8a", 
             borderRadius: "12px", 
@@ -157,10 +208,11 @@ const AddCustomer = ({ onClose }) => {
             fontWeight: "600",
             fontSize: "15px",
             boxShadow: "0 10px 15px -3px rgba(31, 58, 138, 0.3)",
-            "&:hover": { bgcolor: "#1e40af", boxShadow: "0 20px 25px -5px rgba(31, 58, 138, 0.4)" }
+            "&:hover": { bgcolor: "#1e40af", boxShadow: "0 20px 25px -5px rgba(31, 58, 138, 0.4)" },
+            "&:disabled": { bgcolor: "#9ca3af", cursor: "not-allowed" }
           }}
         >
-          Save Customer Details
+          {isLoading ? "Saving..." : "Save Customer Details"}
         </Button>
       </Box>
     </Box>

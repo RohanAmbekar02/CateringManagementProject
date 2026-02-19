@@ -214,33 +214,33 @@ body {
   font-size: 20px;
 }
 
-.book-icon {
+/* .book-icon {
   background: #e7efff;
-}
+} */
 
 .book-icon svg {
   color: #1f3a8a;
 }
 
-.phone-icon {
+/* .phone-icon {
   background: #bbf2ce;
-}
+} */
 
 .phone-icon svg {
   color: #0f683f;
 }
 
-.delete-icon {
+/* .delete-icon {
   background: #fee2e2;
-}
+} */
 
 .delete-icon svg {
   color: #dc3545;
 }
 
-.pencil-icon {
+/* .pencil-icon {
   background: #e0f2fe;
-}
+} */
 
 .pencil-icon svg {
   color: #1f3a8a;

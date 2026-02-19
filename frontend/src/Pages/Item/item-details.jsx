@@ -1,190 +1,244 @@
-import { useState, useMemo } from "react";
+
+
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  Box, Typography, TextField, IconButton, Button,
-  Table, TableBody, TableCell, TableHead,
-  TableRow, TableContainer, Paper,
-  Stack, Chip, Select, MenuItem, useMediaQuery,
-  Dialog, DialogContent, DialogTitle, InputAdornment
+  Box,
+  Typography,
+  TextField,
+  IconButton,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  TableContainer,
+  Paper,
+  Stack,
+  Dialog,
+  DialogContent,
+  InputAdornment
 } from "@mui/material";
-import { Search, Add, Edit, Delete, NavigateBefore, NavigateNext, Close } from "@mui/icons-material";
-import AddItem from "./add-item"; 
 
-/* ---------- DATA ---------- */
-const itemsData = [
-  { id: 1, name: "Mixing Bowl", price: 500 },
-  { id: 2, name: "Frying Pan", price: 1200 },
-  { id: 3, name: "Tandoor Oven", price: 8000 },
-  { id: 4, name: "Cooking Pot", price: 1500 },
-  { id: 5, name: "Rice Cooker", price: 2500 },
-  { id: 6, name: "Salad Spinner", price: 700 },
-  { id: 7, name: "Dessert Plate Set", price: 600 },
-  { id: 8, name: "Ice Cream Scoop", price: 350 },
-  { id: 9, name: "Rolling Pin", price: 400 },
-  { id: 10, name: "Soup Ladle", price: 300 }
-];
+import {
+  Search,
+  Add,
+  Edit,
+  Delete,
+  NavigateBefore,
+  NavigateNext
+} from "@mui/icons-material";
 
-const PRIMARY = "#1f3a8a";
-const PRIMARY_HOVER = "#1e40af";
-const BORDER = "#e1e7f5";
-const BG_LIGHT = "#f5f8ff";
+import AddItem from "./add-item";
+import { getItems, deleteItem } from "../../api/itemAPI";
+import Swal from "sweetalert2";
 
 export default function Items() {
-  // मोबाइल डिटेक्शन (600px या उससे कम)
-  const isMobile = useMediaQuery("(max-width:600px)");
-
-  const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [openAddItem, setOpenAddItem] = useState(false);
-
+  const [editData, setEditData] = useState(null);
+  const [itemsData, setItemsData] = useState([]);
   const [page, setPage] = useState(1);
-  const [rowsPerPage, setRowsPerPage] = useState(6);
+
+  const rowsPerPage = 6;
+  const BG_LIGHT = "#f5f8ff";
+
+  const fetchItems = useCallback(async () => {
+    try {
+      const response = await getItems();
+      setItemsData(response?.data?.data || response?.data || []);
+    } catch (error) {
+      console.error("Fetch error:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchItems();
+  }, [fetchItems]);
+
+  const handleDeleteItem = async (id) => {
+    const result = await Swal.fire({
+      title: "Delete Item?",
+      icon: "warning",
+      showCancelButton: true
+    });
+
+    if (result.isConfirmed) {
+      await deleteItem(id);
+      fetchItems();
+      Swal.fire("Deleted!", "", "success");
+    }
+  };
 
   const filteredItems = useMemo(
     () =>
-      itemsData.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+      itemsData.filter((item) =>
+        item?.name?.toLowerCase().includes(searchQuery.toLowerCase())
       ),
-    [searchQuery]
+    [searchQuery, itemsData]
   );
 
   const totalPages = Math.ceil(filteredItems.length / rowsPerPage);
   const startIndex = (page - 1) * rowsPerPage;
-  const currentItems = filteredItems.slice(startIndex, startIndex + rowsPerPage);
+  const currentItems = filteredItems.slice(
+    startIndex,
+    startIndex + rowsPerPage
+  );
 
   return (
-    <Box sx={{ p: isMobile ? 2 : 3, bgcolor: "#fff", minHeight: "100vh" }}>
-      {/* ---------- HEADER ---------- */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-        <Typography variant={isMobile ? "h6" : "h5"} fontWeight={700} color={PRIMARY}>
+    <Box sx={{ p: 3 }}>
+
+      {/* Header */}
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
+        <Typography
+          variant="h5"
+          fontWeight="bold"
+          sx={{ color: "#1f3a8a" }}
+        >
           Items
         </Typography>
 
         <Button
           startIcon={<Add />}
-          onClick={() => setOpenAddItem(true)}
+          onClick={() => {
+            setEditData(null);
+            setOpenAddItem(true);
+          }}
           variant="contained"
           sx={{
-            bgcolor: PRIMARY,
+            borderRadius: "8px",
             textTransform: "none",
-            borderRadius: "10px",
-            px: isMobile ? 1.5 : 2.5,
-            "&:hover": { bgcolor: PRIMARY_HOVER }
+            px: 3,
+            backgroundColor: "#1f3a8a"
           }}
         >
-          {isMobile ? "Add" : "Add Item"}
+          Add Item
         </Button>
-      </Box>
+      </Stack>
 
-      {/* ---------- SEARCH ---------- */}
-      <Box sx={{ display: "flex", gap: 1, mb: 3, maxWidth: isMobile ? "100%" : 780 }}>
-        <TextField
-          size="small"
-          fullWidth
-          placeholder="Search items"
-          value={searchInput}
-          onChange={(e) => {
-            setSearchInput(e.target.value);
-            setSearchQuery(e.target.value);
-            setPage(1);
-          }}
-          sx={{ borderRadius: "10px" }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <Search sx={{ color: "#9ca3af" }} />
-              </InputAdornment>
-            ),
-            endAdornment: searchInput && (
-              <InputAdornment position="end">
-                <IconButton
-                  size="small"
-                  onClick={() => {
-                    setSearchInput("");
-                    setSearchQuery("");
-                    setPage(1);
-                  }}
-                  sx={{
-                    color: "#9ca3af",
-                    "&:hover": { color: PRIMARY_HOVER },
-                  }}
-                >
-                  <Close fontSize="small" />
-                </IconButton>
-              </InputAdornment>
-            )
-          }}
-        />
-      </Box>
+      {/* Search */}
+      <TextField
+        size="small"
+        placeholder="Search items"
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        sx={{
+          mb: 3,
+          width: 350
+        }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <Search />
+            </InputAdornment>
+          )
+        }}
+      />
 
-      {/* ---------- CONTENT ---------- */}
-      {!isMobile ? (
-        <TableContainer component={Paper} sx={{ border: `1px solid ${BORDER}`, borderRadius: "14px" }}>
-          <Table>
-            <TableHead sx={{ bgcolor: BG_LIGHT }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>S.No.</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Price</TableCell>
-                <TableCell sx={{ fontWeight: 700, textAlign: "center" }}>Actions</TableCell>
+      {/* Table */}
+      <TableContainer
+        component={Paper}
+        sx={{
+          borderRadius: 3,
+          boxShadow: "0 4px 15px rgba(0,0,0,0.08)"
+        }}
+      >
+        <Table>
+          <TableHead sx={{ bgcolor: BG_LIGHT }}>
+            <TableRow>
+              <TableCell><b>S.No.</b></TableCell>
+              <TableCell><b>Name</b></TableCell>
+              <TableCell><b>Price</b></TableCell>
+              <TableCell align="center"><b>Actions</b></TableCell>
+            </TableRow>
+          </TableHead>
+
+          <TableBody>
+            {currentItems.map((item, i) => (
+              <TableRow key={item._id} hover>
+                <TableCell>{startIndex + i + 1}</TableCell>
+                <TableCell>{item.name}</TableCell>
+                <TableCell>₹{item.price}</TableCell>
+                <TableCell align="center">
+                  <IconButton
+                    onClick={() => {
+                      setEditData(item);
+                      setOpenAddItem(true);
+                    }}
+                    sx={{ color: "#1976d2" }}
+                  >
+                    <Edit />
+                  </IconButton>
+
+                  <IconButton
+                    onClick={() => handleDeleteItem(item._id)}
+                    sx={{ color: "red" }}
+                  >
+                    <Delete />
+                  </IconButton>
+                </TableCell>
               </TableRow>
-            </TableHead>
-            <TableBody>
-              {currentItems.map((item, i) => (
-                <TableRow key={item.id} hover>
-                  <TableCell>{startIndex + i + 1}</TableCell>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>₹{item.price}</TableCell>
-                  <TableCell align="center">
-                    <IconButton sx={{ color: PRIMARY }}><Edit /></IconButton>
-                    <IconButton sx={{ color: "#dc2626" }}><Delete /></IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      ) : (
-        <Stack spacing={2}>
-          {currentItems.map((item, i) => (
-            <Box key={item.id} sx={{ border: `1px solid ${BORDER}`, borderRadius: "12px", p: 2, position: "relative" }}>
-              <Typography variant="caption" color="text.secondary">#{startIndex + i + 1}</Typography>
-              <Typography fontWeight={600} variant="subtitle1">{item.name}</Typography>
-              <Typography color={PRIMARY} fontWeight={700}>₹{item.price}</Typography>
-              <Box sx={{ position: "absolute", top: 10, right: 10 }}>
-                 <IconButton size="small" sx={{ color: PRIMARY }}><Edit fontSize="small" /></IconButton>
-                 <IconButton size="small" sx={{ color: "#dc2626" }}><Delete fontSize="small" /></IconButton>
-              </Box>
-            </Box>
-          ))}
-        </Stack>
-      )}
+            ))}
 
-      {/* ---------- PAGINATION ---------- */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 3, mb: 5 }}>
-          <Typography variant="caption">Page {page} of {totalPages || 1}</Typography>
-          <Stack direction="row" spacing={1}>
-            <IconButton disabled={page === 1} onClick={() => setPage(p => p - 1)}><NavigateBefore /></IconButton>
-            <IconButton disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}><NavigateNext /></IconButton>
-          </Stack>
-      </Box>
+            {currentItems.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={4} align="center">
+                  No items found
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-      {/* ---------- FIXED RESPONSIVE DIALOG ---------- */}
-      <Dialog 
-        open={openAddItem} 
-        onClose={() => setOpenAddItem(false)}
+      {/* Pagination */}
+      <Stack direction="row" spacing={1} mt={2} justifyContent="flex-end">
+        <IconButton
+          disabled={page === 1}
+          onClick={() => setPage((p) => p - 1)}
+        >
+          <NavigateBefore />
+        </IconButton>
+
+        <IconButton
+          disabled={page >= totalPages}
+          onClick={() => setPage((p) => p + 1)}
+        >
+          <NavigateNext />
+        </IconButton>
+      </Stack>
+
+      {/* Dialog (FIXED - Removed DialogTitle) */}
+      <Dialog
+        open={openAddItem}
+        onClose={() => {
+          setOpenAddItem(false);
+          setEditData(null);
+        }}
         maxWidth="sm"
         fullWidth
-        fullScreen={isMobile} // मोबाइल पर पूरी स्क्रीन लेगा ताकि बाहर न जाए
+        PaperProps={{
+          sx: { borderRadius: 3 }
+        }}
       >
-        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#f2f2f2" }}>
-          Add New Item
-          <IconButton onClick={() => setOpenAddItem(false)}><Close /></IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ p: isMobile ? 2 : 3 }}>
-          {/* isDialog={true} पास करना जरूरी है */}
-          <AddItem onClose={() => setOpenAddItem(false)} isDialog={true} />
+        <DialogContent sx={{ p: 0 }}>
+          <AddItem
+            key={editData?._id || "new"}
+            editData={editData}
+            onClose={() => {
+              setOpenAddItem(false);
+              setEditData(null);
+              fetchItems();
+            }}
+          />
         </DialogContent>
       </Dialog>
+
     </Box>
   );
 }

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
   Box, Typography, TextField, IconButton, Button,
   Table, TableBody, TableCell, TableHead,
@@ -8,20 +8,9 @@ import {
 } from "@mui/material";
 import { Search, Add, Edit, Delete, NavigateBefore, NavigateNext, Close } from "@mui/icons-material";
 import AddCustomer from "./AddCustomer";
+import Swal from "sweetalert2";
+import { getCustomers, deleteCustomer } from "../../api/customerAPI";
 import "./customer-details.css";
-
-/* ---------- DATA ---------- */
-const customersData = [
-  { id: 1, name: "Pooja Deshmukh", mobile: "9827345378", status: "Active" },
-  { id: 2, name: "Rajesh Patil", mobile: "9871423897", status: "Active" },
-  { id: 3, name: "Anjili Joshi", mobile: "9356829017", status: "Inactive" },
-  { id: 4, name: "Sachin Gupta", mobile: "9353682849", status: "Active" },
-  { id: 5, name: "Priya Mishra", mobile: "9451822347", status: "Active" },
-  { id: 6, name: "Neha Kulkarni", mobile: "9827345378", status: "Inactive" },
-  { id: 7, name: "Nitin Mishra", mobile: "9827345378", status: "Active" },
-  { id: 8, name: "Anjali Singh", mobile: "9876543210", status: "Active" },
-  { id: 9, name: "Vikram Kumar", mobile: "9765432109", status: "Inactive" }
-];
 
 const PRIMARY = "#1f3a8a";
 const PRIMARY_HOVER = "#1e40af";
@@ -34,17 +23,67 @@ export default function Customers() {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [openAddCustomer, setOpenAddCustomer] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [customersDataState, setCustomersDataState] = useState([]);
 
   const [page, setPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(6);
 
+  const fetchCustomers = useCallback(async () => {
+    try {
+      const response = await getCustomers();
+      setCustomersDataState(response.data);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  const handleDeleteCustomer = (id) => {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "You won't be able to revert this!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      cancelButtonColor: "#6b7280",
+      confirmButtonText: "Yes, delete it!"
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await deleteCustomer(id);
+          fetchCustomers();
+          Swal.fire({
+            icon: "success",
+            title: "Deleted!",
+            text: "Customer has been deleted.",
+            confirmButtonColor: "#1f3a8a",
+            timer: 2000,
+            timerProgressBar: true
+          });
+        } catch (error) {
+          console.error("Error deleting customer:", error);
+          Swal.fire({
+            icon: "error",
+            title: "Error!",
+            text: "Failed to delete customer",
+            confirmButtonColor: "#1f3a8a"
+          });
+        }
+      }
+    });
+  };
+
   const filteredCustomers = useMemo(
     () =>
-      customersData.filter(customer =>
+      customersDataState.filter(customer =>
         customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        customer.mobile.includes(searchQuery)
+        customer.contact.includes(searchQuery)
       ),
-    [searchQuery]
+    [searchQuery, customersDataState]
   );
 
   const totalPages = Math.ceil(filteredCustomers.length / rowsPerPage);
@@ -62,7 +101,10 @@ export default function Customers() {
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => setOpenAddCustomer(true)}
+          onClick={() => {
+            setEditData(null);
+            setOpenAddCustomer(true);
+          }}
           sx={{
             bgcolor: PRIMARY,
             textTransform: "none",
@@ -110,21 +152,24 @@ export default function Customers() {
           <Table>
             <TableHead sx={{ bgcolor: BG_LIGHT }}>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>#</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>S.No</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Mobile</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Contact</TableCell>
                 <TableCell sx={{ fontWeight: 700, textAlign: "center" }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {currentCustomers.map((customer, i) => (
-                <TableRow key={customer.id} hover>
+                <TableRow key={customer._id} hover>
                   <TableCell>{startIndex + i + 1}</TableCell>
                   <TableCell>{customer.name}</TableCell>
-                  <TableCell>{customer.mobile}</TableCell>
+                  <TableCell>{customer.contact}</TableCell>
                   <TableCell align="center">
-                    <IconButton sx={{ color: PRIMARY }}><Edit /></IconButton>
-                    <IconButton sx={{ color: "#dc2626" }}><Delete /></IconButton>
+                    <IconButton sx={{ color: PRIMARY }} onClick={() => {
+                      setEditData(customer);
+                      setOpenAddCustomer(true);
+                    }}><Edit /></IconButton>
+                    <IconButton sx={{ color: "#dc2626" }} onClick={() => handleDeleteCustomer(customer._id)}><Delete /></IconButton>
                   </TableCell>
                 </TableRow>
               ))}
@@ -135,14 +180,17 @@ export default function Customers() {
         /* ---------- MOBILE CARDS ---------- */
         <Stack spacing={2}>
           {currentCustomers.map((customer, i) => (
-            <Box key={customer.id} sx={{ border: `1px solid ${BORDER}`, borderRadius: "14px", p: 2, position: "relative" }}>
-              <Typography variant="caption" color="text.secondary">#{startIndex + i + 1}</Typography>
+            <Box key={customer._id} sx={{ border: `1px solid ${BORDER}`, borderRadius: "14px", p: 2, position: "relative" }}>
+              <Typography variant="caption" color="text.secondary">S.No{startIndex + i + 1}</Typography>
               <Typography fontWeight={600}>{customer.name}</Typography>
-              <Typography color="text.secondary" variant="body2">📱 {customer.mobile}</Typography>
+              <Typography color="text.secondary" variant="body2">📱 {customer.contact}</Typography>
               
               <Box sx={{ position: "absolute", top: 10, right: 10 }}>
-                <IconButton size="small" sx={{ color: PRIMARY }}><Edit fontSize="small" /></IconButton>
-                <IconButton size="small" sx={{ color: "#dc2626" }}><Delete fontSize="small" /></IconButton>
+                <IconButton size="small" sx={{ color: PRIMARY }} onClick={() => {
+                  setEditData(customer);
+                  setOpenAddCustomer(true);
+                }}><Edit fontSize="small" /></IconButton>
+                <IconButton size="small" sx={{ color: "#dc2626" }} onClick={() => handleDeleteCustomer(customer._id)}><Delete fontSize="small" /></IconButton>
               </Box>
             </Box>
           ))}
@@ -167,17 +215,27 @@ export default function Customers() {
       {/* ---------- RESPONSIVE DIALOG ---------- */}
       <Dialog 
         open={openAddCustomer} 
-        onClose={() => setOpenAddCustomer(false)}
+        onClose={() => {
+          setOpenAddCustomer(false);
+          setEditData(null);
+        }}
         fullWidth
         maxWidth="sm"
         fullScreen={isMobile}
       >
         <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", bgcolor: "#f2f2f2" }}>
-          Add New Customer
-          <IconButton onClick={() => setOpenAddCustomer(false)}><Close /></IconButton>
+          {editData ? "Edit Customer" : "Add New Customer"}
+          <IconButton onClick={() => {
+            setOpenAddCustomer(false);
+            setEditData(null);
+          }}><Close /></IconButton>
         </DialogTitle>
         <DialogContent sx={{ p: isMobile ? 2 : 3 }}>
-          <AddCustomer onClose={() => setOpenAddCustomer(false)} isDialog={true} />
+          <AddCustomer onClose={() => {
+            setOpenAddCustomer(false);
+            setEditData(null);
+            fetchCustomers();
+          }} editData={editData} isDialog={true} />
         </DialogContent>
       </Dialog>
     </Box>

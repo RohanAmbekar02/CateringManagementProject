@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Swal from "sweetalert2";
 import { getCustomers } from "../../api/customerAPI";
 import { getItems } from "../../api/itemAPI";
-import { addOrder } from "../../api/orderAPI";
-import "./add-order.css";
+import { getOrderById, updateOrder } from "../../api/orderAPI";
+import "./add-order.css"; // reuse same styles
 
-function AddOrder() {
+function EditOrder() {
   const navigate = useNavigate();
+  const { id } = useParams();
+
   const [customers, setCustomers] = useState([]);
   const [itemsList, setItemsList] = useState([]);
   const [selectedCustomer, setSelectedCustomer] = useState("");
@@ -16,10 +18,11 @@ function AddOrder() {
   const [paidAmount, setPaidAmount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ⭐ Fetch customers and items on mount
+  // fetch master data + order
   useEffect(() => {
     fetchData();
-  }, []);
+    if (id) loadOrder();
+  }, [id]);
 
   const fetchData = async () => {
     try {
@@ -40,6 +43,39 @@ function AddOrder() {
     }
   };
 
+  const loadOrder = async () => {
+    setIsLoading(true);
+    try {
+      const resp = await getOrderById(id);
+      const ord = resp.data;
+      if (ord) {
+        setSelectedCustomer(ord.customer.customerId);
+        setOrderDate(new Date(ord.orderDate).toISOString().split('T')[0]);
+        setPaidAmount(ord.paidAmount || 0);
+        if (ord.items && ord.items.length) {
+          setItems(
+            ord.items.map((it, idx) => ({
+              id: Date.now() + idx,
+              itemId: it.itemId,
+              qty: it.qty,
+              price: it.price
+            }))
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error loading order", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error!",
+        text: "Failed to load order details",
+        confirmButtonColor: "#1f3a8a"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const addItem = () => {
     setItems([...items, { id: Date.now(), itemId: "", qty: 1, price: 0 }]);
   };
@@ -49,7 +85,6 @@ function AddOrder() {
       items.map(item => {
         if (item.id === id) {
           if (field === "itemId") {
-            // Find the selected item and get its price
             const selectedItem = itemsList.find(i => i._id === value);
             return { ...item, itemId: value, price: selectedItem?.price || 0 };
           }
@@ -78,7 +113,6 @@ function AddOrder() {
   const remainingAmount = subtotal - paidAmount;
 
   const handleSubmit = async () => {
-    // Validation
     if (!selectedCustomer) {
       Swal.fire({
         icon: "warning",
@@ -99,10 +133,8 @@ function AddOrder() {
       return;
     }
 
-    // Get selected customer name
     const selectedCustomerObj = customers.find(c => c._id === selectedCustomer);
 
-    // Prepare order data - matching backend structure
     const orderData = {
       customer: {
         customerId: selectedCustomer,
@@ -118,12 +150,11 @@ function AddOrder() {
 
     setIsLoading(true);
     try {
-      console.log("Submitting order:", orderData);
-      await addOrder(orderData);
+      await updateOrder(id, orderData);
       Swal.fire({
         icon: "success",
-        title: "Success!",
-        text: "Order created successfully",
+        title: "Updated!",
+        text: "Order updated successfully",
         confirmButtonColor: "#1f3a8a",
         timer: 2000,
         timerProgressBar: true
@@ -131,8 +162,8 @@ function AddOrder() {
         navigate("/details");
       });
     } catch (error) {
-      console.error("Error creating order:", error);
-      const errorMsg = error.response?.data?.error || error.message || "Failed to create order";
+      console.error("Error updating order:", error);
+      const errorMsg = error.response?.data?.error || error.message || "Failed to update order";
       Swal.fire({
         icon: "error",
         title: "Error!",
@@ -145,17 +176,15 @@ function AddOrder() {
   };
 
   const handleReset = () => {
-    setSelectedCustomer("");
-    setOrderDate(new Date().toISOString().split('T')[0]);
-    setItems([{ id: 1, itemId: "", qty: 1, price: 0 }]);
-    setPaidAmount(0);
+    // reload original order
+    if (id) loadOrder();
   };
 
   return (
     <div className="container-fluid mt-3">
       <div className="row">
         <div className="col-12 mb-3">
-          <h4 className="border-bottom pb-2 text" >Create Order</h4>
+          <h4 className="border-bottom pb-2 text">Edit Order</h4>
         </div>
 
         {/* Customer & Date */}
@@ -300,7 +329,7 @@ function AddOrder() {
                 onClick={handleSubmit}
                 disabled={isLoading}
               >
-                {isLoading ? "Creating..." : "Submit"}
+                {isLoading ? "Updating..." : "Update"}
               </button>
             </div>
           </div>
@@ -310,4 +339,4 @@ function AddOrder() {
   );
 }
 
-export default AddOrder;
+export default EditOrder;

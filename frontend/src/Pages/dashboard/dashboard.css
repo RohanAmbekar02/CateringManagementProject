@@ -1,11 +1,12 @@
-/* CONTAINER */
+CONTAINER
 .dash-container {
   display: flex;
   gap: 22px;
   width: 100%;
-   margin-left: 10%;
-   margin-top: 10%;
-
+   margin: 10% auto 0; /* top margin and horizontal centering */
+  min-height: 80vh; /* allow vertical centering of card rows */
+  justify-content: center; /* center rows */
+  align-items: center; /* vertical centering if container taller */
 }
 
 /* CARD BASE */
@@ -22,7 +23,7 @@
   cursor: pointer;
   transition: all 0.45s ease;
   box-shadow: 0 14px 35px rgba(0, 0, 0, 0.08);
-  width: 250px;
+  /* width removed to allow flex basis to control size */
   height: 130px;
 }
 
@@ -89,6 +90,19 @@
   background: linear-gradient(135deg, #e6f9f4, #d9f5ee);
 }
 
+/* additional colors for new dashboard cards */
+.red {
+  background: linear-gradient(135deg, #ffe6e6, #ffcccc);
+}
+
+.green {
+  background: linear-gradient(135deg, #e6ffe6, #ccffcc);
+}
+
+.yellow {
+  background: linear-gradient(135deg, #fffde6, #fffbcc);
+}
+
 @keyframes float {
   0% {
     transform: translateY(0);
@@ -122,6 +136,9 @@
   width: 100%;
   padding: 20px;
   box-sizing: border-box;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
 }
 
 /* =======================
@@ -148,8 +165,7 @@
 ======================= */
 @media (min-width: 1024px) {
   .dash-card {
-    flex: 1 1 23%;
-    
+    flex: 0 0 23%; /* fixed width basis, no growth */
   }
 }
 
@@ -159,7 +175,7 @@
 ======================= */
 @media (max-width: 1023px) and (min-width: 600px) {
   .dash-card {
-    flex: 1 1 48%;
+    flex: 0 0 48%;
   }
 }
 
@@ -169,7 +185,7 @@
 ======================= */
 @media (max-width: 599px) {
   .dash-card {
-    flex: 1 1 100%;
+    flex: 0 0 100%;
   }
 }
 /* ICON STYLING */
@@ -198,6 +214,18 @@
 
 .orange .dash-icon i {
   color: #f97316; /* orange */
+}
+
+.red .dash-icon i {
+  color: #dc2626; /* red */
+}
+
+.green .dash-icon i {
+  color: #16a34a; /* green */
+}
+
+.yellow .dash-icon i {
+  color: #d97706; /* yellow/orange */
 }
 
 .teal .dash-icon i {
@@ -237,20 +265,20 @@
 /* Desktop – 4 cards */
 @media (min-width: 1024px) {
   .dash-card {
-    flex: 1 1 23%;
+    flex: 0 0 23%;
   }
 }
 
 /* Tablet – 2 cards */
 @media (max-width: 1023px) and (min-width: 600px) {
   .dash-card {
-    flex: 1 1 48%;
+    flex: 0 0 48%;
   }
 }
 
 /* Mobile – 1 card */
 @media (max-width: 599px) {
   .dash-card {
-    flex: 1 1 100%;
+    flex: 0 0 100%;
   }
 }
